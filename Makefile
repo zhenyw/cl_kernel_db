@@ -1,5 +1,5 @@
 
-CFLAGS := -I/opt/gtpin/include
+CFLAGS := -I/usr/include
 LDFLAGS := -lOpenCL
 
 all: run
