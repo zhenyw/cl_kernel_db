@@ -5,11 +5,17 @@ OCL compiler.
 
 ###Run
 
-Just type *make* to build required program.
+Type *make* to build required program.
 
 Run by
 
 > ./run.py > new_result
+
+More option is available from
+
+> ./run.py -h
+
+Currently support to specify OCL platforms for beignet or Intel OpenCL SDK.
 
 To get report comparison by
 
