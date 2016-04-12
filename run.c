@@ -155,7 +155,6 @@ int main(int argc, char *argv[])
 	    (platform_select == 1 && strcmp(platname, "Intel(R) OpenCL") == 0)) {
 	    target_platform_id = platform_ids[i];
 	    found_platform = true;
-	    printf("Platform: %s\n", platname);
 	    break;
 	}
     }
@@ -214,6 +213,7 @@ int main(int argc, char *argv[])
     assert(err == CL_SUCCESS);
 
     printf("CL kernel: %s\n", cl_src);
+    printf("Platform: %s\n", platname);
     printf("Binary size: %u\n", bin_size);
     printf("Build time: %.01f ms\n", get_time_diff(&start, &end));
     
