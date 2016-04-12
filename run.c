@@ -212,10 +212,7 @@ int main(int argc, char *argv[])
     err = clGetProgramInfo(program, CL_PROGRAM_BINARY_SIZES, sizeof(bin_size), &bin_size, NULL);
     assert(err == CL_SUCCESS);
 
-    printf("CL kernel: %s\n", cl_src);
-    printf("Platform: %s\n", platname);
-    printf("Binary size: %u\n", bin_size);
-    printf("Build time: %.01f ms\n", get_time_diff(&start, &end));
+    printf("%s,%s,%u,%.2f", cl_src, platname, bin_size, get_time_diff(&start, &end));
     
     clReleaseProgram(program);
     clReleaseCommandQueue(commands);
