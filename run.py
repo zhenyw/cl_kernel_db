@@ -19,17 +19,19 @@ blacklist = [
     "kernel/luxmark/hotel-1",   #beignet takes too long time > 600s
     ]
 
-def process_directories():
-    for root, dirs, filenames in os.walk("kernel/"):
-        filenames.sort()
-        for f in filenames:
-            item = os.path.splitext(f)
-            if root + "/" + item[0] in blacklist:
-                continue
-            if item[1] == ".cl":
-                cases[root+"/"+f] = ""
-            elif item[1] == ".opt":
-                cases[root+"/"+item[0]+".cl"] = root + "/" + f
+def process_directories(target):
+    for d in target:
+        if os.path.isdir(d):
+            for root, dirs, filenames in os.walk(d):
+                filenames.sort()
+                for f in filenames:
+                    item = os.path.splitext(f)
+                    if root + "/" + item[0] in blacklist:
+                        continue
+                    if item[1] == ".cl":
+                        cases[root+"/"+f] = ""
+                    elif item[1] == ".opt":
+                        cases[root+"/"+item[0]+".cl"] = root + "/" + f
 
 def run_cases(drv):
     for k in cases:
@@ -52,6 +54,9 @@ def main():
     parser.add_argument("--platform", nargs='?', default='0',
                         metavar='0 | 1',
                         help='Specify target OCL platform: 0 means beignet, 1 means VPG. Beignet is default.')
+    parser.add_argument("kernel", nargs='*', default=['kernel/'],
+                        metavar='kernel directory',
+                        help='Specify OCL kernel run target directory.')
     args = parser.parse_args()
     
     try:
@@ -60,7 +65,7 @@ def main():
         print("First to build run by make")
         sys.exit(1)
 
-    process_directories()
+    process_directories(args.kernel)
 
     run_cases(args.platform)
 
