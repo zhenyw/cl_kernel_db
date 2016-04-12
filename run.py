@@ -4,6 +4,7 @@ import sys
 import os
 import time
 import subprocess
+import argparse
 
 # case dict
 # e.g {
@@ -47,6 +48,12 @@ def run_cases(drv):
 
 def main():
 
+    parser = argparse.ArgumentParser(description='OCL kernel compiler evaluation program')
+    parser.add_argument("--platform", nargs='?', default='0',
+                        metavar='0 | 1',
+                        help='Specify target OCL platform: 0 means beignet, 1 means VPG. Beignet is default.')
+    args = parser.parse_args()
+    
     try:
         os.stat("run")
     except OSError:
@@ -55,7 +62,7 @@ def main():
 
     process_directories()
 
-    run_cases("0")
+    run_cases(args.platform)
 
 if __name__ == "__main__":
     main()
