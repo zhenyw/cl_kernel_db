@@ -1,0 +1,1 @@
+-D__DO_FLOAT__ -cl-denorms-are-zero -cl-fast-relaxed-math -cl-single-precision-constant -DNSAMP=262144
