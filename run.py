@@ -46,7 +46,7 @@ def run_cases(drv):
             results = stdout.decode("UTF-8")
         except KeyboardInterrupt:
             sys.exit(1)
-        print(results)
+        print(results, end="", flush=True)
 
 def main():
 
