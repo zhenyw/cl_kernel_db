@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 #include <math.h>
@@ -87,6 +88,163 @@ double get_time_diff(struct timeval *s, struct timeval *e)
     diff = (double)e_ms - (double)s_ms;
 
     return diff;
+}
+
+static char *
+beignet_find_magic(char *base, unsigned int b_length, unsigned int *left,
+		   const char *magic, int m_length)
+{
+    int i, j;
+
+    for (i = 0; i < b_length; i = i + j + 1) {
+	for (j = 0; j < m_length; j++)
+	    if (base[i+j] != magic[j])
+		break;
+	if (j == m_length) {
+	    *left = b_length - i;
+	    return &base[i];
+	}
+    }
+    return NULL;
+}
+
+#define BEIGNET_BIN_HEADER_LEN 8
+
+#define KERNEL_MAGIC_SIZE 4
+#define KERNEL_NAME_SIZE sizeof(size_t)
+#define KERNEL_ARG_NUM_SIZE 4
+#define KERNEL_ARG_TYPE_SIZE 4
+#define KERNEL_ARG_SIZE_SIZE 4
+#define KERNEL_ARG_ALIGN_SIZE 4
+#define KERNEL_ARG_BTI_SIZE 1
+#define KERNEL_ARG_ADDR_SPACE_SIZE 4
+#define KERNEL_ARG_TYPE_NAME_SIZE sizeof(size_t)
+#define KERNEL_ARG_ACCESS_QUAL_SIZE sizeof(size_t)
+#define KERNEL_ARG_TYPE_QUAL_SIZE sizeof(size_t)
+#define KERNEL_ARG_NAME_SIZE sizeof(size_t)
+#define KERNEL_PATCHES_SIZE sizeof(size_t)
+#define KERNEL_PATCHES_TYPE_SIZE sizeof(unsigned int)
+#define KERNEL_PATCHES_SUBTYPE_SIZE sizeof(unsigned int)
+#define KERNEL_PATCHES_OFFSET_SIZE sizeof(unsigned int)
+#define KERNEL_CURBE_SIZE 4
+#define KERNEL_SIMD_SIZE 4
+#define KERNEL_STACK_SIZE 4
+#define KERNEL_STRATCH_SIZE 4
+#define KERNEL_USE_SLM_SIZE 1
+#define KERNEL_SLM_SIZE 4
+#define KERNEL_COMPILE_WG_SIZE (sizeof(size_t)*3)
+#define KERNEL_SAMPLE_SET_SIZE sizeof(int)
+#define KERNEL_SAMPLE_MAGIC_SIZE 4
+#define KERNEL_SAMPLE_MAP_SIZE sizeof(size_t)
+#define KERNEL_SAMPLE_MAP_ITEM_SIZE (4*2)
+#define KERNEL_SAMPLE_MAGIC_END_SIZE 4
+#define KERNEL_SAMPLE_RET_SIZE sizeof(size_t)
+#define KERNEL_IMAGE_SET_SIZE sizeof(int)
+#define KERNEL_IMAGE_MAGIC_SIZE 4
+#define KERNEL_IMAGE_REGMAP_SIZE sizeof(size_t)
+#define KERNEL_IMAGE_MAP_FIRST_SIZE 4 /* Register */
+#define KERNEL_IMAGE_MAP_SECOND_SIZE (4*8)
+#define KERNEL_IMAGE_IDXMAP_SIZE sizeof(size_t)
+#define KERNEL_IMAGE_IDXMAP_FIRST_SIZE 4
+#define KERNEL_IMAGE_IDXMAP_SECOND_SIZE (4*8)	    
+#define KERNEL_IMAGE_MAGIC_END_SIZE 4
+#define KERNEL_IMAGE_RET_SIZE sizeof(size_t)
+#define KERNEL_CODE_SIZE sizeof(size_t)
+	    
+static size_t
+beignet_kernel_code_size(char *kern)
+{
+    uint32_t f_32, i;
+    size_t f_size_t;
+    int f_int;
+
+    if (kern[0] != 'N' || kern[1] != 'R' || kern[2] != 'E' || kern[3] != 'K') {
+	fprintf(stderr, "Wrong beignet kernel section\n");
+	return 0;
+    }
+    
+    kern += KERNEL_MAGIC_SIZE;
+    f_size_t = *(size_t *)kern;
+    kern += KERNEL_NAME_SIZE;
+    kern += f_size_t;
+    
+    f_32 = *(uint32_t *)kern;
+    kern += KERNEL_ARG_NUM_SIZE;
+    for (i = 0; i < f_32; i++) {
+	uint32_t tmp;
+	kern += KERNEL_ARG_TYPE_SIZE;
+	kern += KERNEL_ARG_SIZE_SIZE;
+	kern += KERNEL_ARG_ALIGN_SIZE;
+	kern += KERNEL_ARG_BTI_SIZE;
+	kern += KERNEL_ARG_ADDR_SPACE_SIZE;
+
+	tmp = *(uint32_t *)kern;
+	kern += KERNEL_ARG_TYPE_NAME_SIZE;
+	kern += tmp;
+
+	tmp = *(uint32_t *)kern;
+	kern += KERNEL_ARG_ACCESS_QUAL_SIZE;
+	kern += tmp;
+
+	tmp = *(uint32_t *)kern;
+	kern += KERNEL_ARG_TYPE_QUAL_SIZE;
+	kern += tmp;
+
+	tmp = *(uint32_t *)kern;
+	kern += KERNEL_ARG_NAME_SIZE;
+	kern += tmp;
+    }
+
+    f_size_t = *(size_t *)kern;
+    kern += KERNEL_PATCHES_SIZE;
+    for (i = 0; i < f_size_t; i++) {
+	kern += (KERNEL_PATCHES_TYPE_SIZE +
+		 KERNEL_PATCHES_SUBTYPE_SIZE +
+		 KERNEL_PATCHES_OFFSET_SIZE);
+    }
+
+    kern += KERNEL_CURBE_SIZE;
+    kern += KERNEL_SIMD_SIZE;
+    kern += KERNEL_STACK_SIZE;
+    kern += KERNEL_STRATCH_SIZE;
+    kern += KERNEL_USE_SLM_SIZE;
+    kern += KERNEL_SLM_SIZE;
+    kern += KERNEL_COMPILE_WG_SIZE;
+
+    f_int = *(int *)kern;
+    kern += KERNEL_SAMPLE_SET_SIZE;
+    if (f_int != 0) {
+	kern += KERNEL_SAMPLE_MAGIC_SIZE;
+	f_size_t = *(size_t *)kern;
+	kern += KERNEL_SAMPLE_MAP_SIZE;
+	for (i = 0; i < f_size_t; i++) {
+	    kern += KERNEL_SAMPLE_MAP_ITEM_SIZE;
+	}
+	kern += KERNEL_SAMPLE_MAGIC_END_SIZE;
+	kern += KERNEL_SAMPLE_RET_SIZE;
+    }
+
+    f_int = *(int *)kern;
+    kern += KERNEL_IMAGE_SET_SIZE;
+    if (f_int != 0) {
+	kern += KERNEL_IMAGE_MAGIC_SIZE;
+	f_size_t = *(size_t *)kern;
+	kern += KERNEL_IMAGE_REGMAP_SIZE;
+	for (i = 0; i < f_size_t; i++) {
+	    kern += KERNEL_IMAGE_MAP_FIRST_SIZE;
+	    kern += KERNEL_IMAGE_MAP_SECOND_SIZE;
+	}
+	f_size_t = *(size_t *)kern;
+	kern += KERNEL_IMAGE_IDXMAP_SIZE;
+	for (i = 0; i < f_size_t; i++) {
+	    kern += KERNEL_IMAGE_IDXMAP_FIRST_SIZE;
+	    kern += KERNEL_IMAGE_IDXMAP_SECOND_SIZE;
+	}
+	kern += KERNEL_IMAGE_MAGIC_END_SIZE;
+	kern += KERNEL_IMAGE_RET_SIZE;
+    }
+
+    return *(size_t *)kern;
 }
 
 void usage()
@@ -212,7 +370,44 @@ int main(int argc, char *argv[])
     err = clGetProgramInfo(program, CL_PROGRAM_BINARY_SIZES, sizeof(bin_size), &bin_size, NULL);
     assert(err == CL_SUCCESS);
 
-    printf("%s,%s,%u,%.2f\n", cl_src, platname, bin_size, get_time_diff(&start, &end));
+    char *bin = (char *)malloc(bin_size);
+    if (!bin) {
+	fprintf(stderr, "Error: binary buffer alloc fail\n");
+	exit(1);
+    }
+    err = clGetProgramInfo(program, CL_PROGRAM_BINARIES, bin_size, &bin, NULL);
+    assert(err == CL_SUCCESS);
+
+#if 0
+    FILE *f_bin = fopen("kernel.bin", "w");
+    fwrite(bin, bin_size, 1, f_bin);
+    fflush(f_bin);
+    fclose(f_bin);
+#endif
+    
+    unsigned int code_size = 0;
+    
+    if (platform_select == 0) {
+	char *new_kernel = bin;
+	unsigned int len = bin_size;
+	unsigned int left;
+
+	if (bin[0] != 0 && bin[1] != 'G' && bin[2] != 'E' &&
+	    bin[3] != 'N' && bin[4] != 'C') {
+	    fprintf(stderr, "Error: invalid beignet binary format\n");
+	    exit(1);
+	}
+
+	new_kernel += BEIGNET_BIN_HEADER_LEN;
+	
+	while ((new_kernel = beignet_find_magic(new_kernel, len, &left, "NREK", 4)) != NULL) {
+	    len = left;
+	    code_size += beignet_kernel_code_size(new_kernel);
+	    new_kernel += 4;
+	}
+    }
+
+    printf("%s,%s,%u,%u,%.2f\n", cl_src, platname, bin_size, code_size, get_time_diff(&start, &end));
     
     clReleaseProgram(program);
     clReleaseCommandQueue(commands);
