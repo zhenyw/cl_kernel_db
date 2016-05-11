@@ -16,7 +16,7 @@ cases = {}
 
 # blacklist case
 blacklist = [
-    "kernel/luxmark/hotel-1",   #beignet takes too long time > 600s
+#    "kernel/luxmark/hotel-1",   #beignet takes too long time > 600s
     ]
 
 def process_directories(target):
